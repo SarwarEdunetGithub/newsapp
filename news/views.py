@@ -31,10 +31,10 @@ class TrendingNewsView(generics.ListAPIView):
     serializer_class = ArticleSerializer
 
     def get_queryset(self):
-        # Taking top 5 most recent if is_trending, or just top 5 overall if none checked
-        trending = Article.objects.filter(is_trending=True)[:5]
+        # Taking top 10 most recent trending articles, fallback to overall latest 10
+        trending = Article.objects.filter(is_trending=True).order_by('-published_date')[:10]
         if not trending:
-            return Article.objects.all()[:5]
+            return Article.objects.all().order_by('-published_date')[:10]
         return trending
 
 class TranslateArticleView(APIView):
