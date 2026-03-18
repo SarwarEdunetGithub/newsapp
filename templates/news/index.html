@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI News Digest</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .news-card { transition: transform 0.2s ease-in-out; }
+        .news-card:hover { transform: translateY(-5px); }
+        .tab-active { border-bottom: 2px solid #3B82F6; color: #3B82F6; }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3b82f6;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans">
+
+    <!-- Navigation Bar -->
+    <nav class="bg-white shadow-md fixed w-full z-10 top-0">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <!-- Logo -->
+                <div class="flex-shrink-0 flex items-center cursor-pointer" onclick="loadHome()">
+                    <i class="fas fa-newspaper text-blue-600 text-2xl mr-2"></i>
+                    <span class="font-bold text-xl tracking-tight text-gray-900">AI News</span>
+                </div>
+                
+                <!-- Desktop Menu -->
+                <div class="hidden md:flex space-x-4 items-center">
+                    <a href="#" onclick="loadCategory('')" class="text-gray-600 hover:text-blue-600 px-3 py-2 rounded-md font-medium">Home</a>
+                    <a href="#" onclick="loadCategory('technology')" class="text-gray-600 hover:text-blue-600 px-3 py-2 rounded-md font-medium">Technology</a>
+                    <a href="#" onclick="loadCategory('business')" class="text-gray-600 hover:text-blue-600 px-3 py-2 rounded-md font-medium">Business</a>
+                    <a href="#" onclick="loadCategory('sports')" class="text-gray-600 hover:text-blue-600 px-3 py-2 rounded-md font-medium">Sports</a>
+                    <a href="#" onclick="loadCategory('health')" class="text-gray-600 hover:text-blue-600 px-3 py-2 rounded-md font-medium">Health</a>
+                    <a href="#" onclick="loadBookmarks()" class="text-red-500 hover:text-red-600 px-3 py-2 rounded-md font-medium"><i class="fas fa-bookmark mr-1"></i>Bookmarks</a>
+                </div>
+
+                <!-- Search and Tools -->
+                <div class="flex items-center space-x-3">
+                    <div class="relative hidden sm:block">
+                        <input type="text" id="searchInput" placeholder="Search news..." class="w-full bg-gray-100 rounded-full py-1.5 px-4 pl-10 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                        <i class="fas fa-search absolute left-3 top-2.5 text-gray-400 text-sm"></i>
+                    </div>
+                </div>
+
+                <!-- Mobile menu button -->
+                <div class="flex items-center md:hidden">
+                    <button class="text-gray-600 hover:text-gray-900 focus:outline-none p-2">
+                        <i class="fas fa-bars text-xl"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-12">
+        
+        <!-- Flash Message / Initial Loader Trigger -->
+        <div class="flex justify-between items-end mb-6">
+            <div>
+                <h1 id="pageTitle" class="text-3xl font-bold text-gray-900">Top Headlines</h1>
+                <p id="pageSubTitle" class="text-gray-500 mt-1">Your daily intelligent news digest</p>
+            </div>
+            
+            <!-- Controls -->
+            <div class="flex items-center space-x-4">
+                <select id="langSelect" onchange="translatePage()" class="bg-white border border-gray-300 text-gray-700 py-1 px-3 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm">
+                    <option value="en">English</option>
+                    <option value="hi">Hindi</option>
+                    <option value="te">Telugu</option>
+                </select>
+                <button onclick="forceFetch()" class="bg-blue-600 hover:bg-blue-700 text-white py-1.5 px-4 rounded-md shadow-sm text-sm font-medium transition duration-150">
+                    <i class="fas fa-sync-alt mr-1"></i> Refresh News
+                </button>
+            </div>
+        </div>
+
+        <!-- Trending Section (Only on Home) -->
+        <div id="trendingSection" class="mb-12">
+            <h2 class="text-2xl font-bold text-gray-900 mb-4 border-l-4 border-blue-500 pl-3">Trending Now</h2>
+            <div id="trendingContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <!-- Trending cards will be injected here -->
+            </div>
+        </div>
+
+        <!-- Main News Feed -->
+        <div class="mb-8 flex justify-between items-center border-b border-gray-200 pb-4">
+            <h2 id="feedTitle" class="text-2xl font-bold text-gray-900">Latest Updates</h2>
+        </div>
+
+        <div id="loader" class="flex justify-center my-12 hidden">
+            <div class="loader"></div>
+        </div>
+
+        <div id="newsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <!-- News cards will be injected here -->
+        </div>
+        
+    </main>
+
+    <!-- Article Modal -->
+    <div id="articleModal" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" onclick="closeModal()"></div>
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+            <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
+                <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                    <div class="sm:flex sm:items-start">
+                        <div class="mt-3 text-left sm:mt-0 sm:ml-4 w-full">
+                            <div class="flex justify-between items-start mb-4">
+                                <h3 class="text-3xl leading-tight font-bold text-gray-900" id="modalTitle">Article Title</h3>
+                                <button onclick="closeModal()" class="text-gray-400 hover:text-gray-500 focus:outline-none">
+                                    <i class="fas fa-times text-2xl"></i>
+                                </button>
+                            </div>
+                            <img id="modalImage" src="" alt="" class="w-full h-80 object-cover rounded-xl mb-6 shadow-md">
+                            <div class="flex items-center space-x-4 mb-6 text-sm text-gray-500">
+                                <span id="modalSource" class="font-bold text-blue-600 uppercase tracking-widest">SOURCE</span>
+                                <span id="modalDate"><i class="far fa-calendar-alt mr-1"></i> DATE</span>
+                                <span id="modalCategory" class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full text-xs font-bold">CATEGORY</span>
+                            </div>
+                            <div id="modalContent" class="text-gray-700 text-lg leading-relaxed space-y-4 prose max-w-none">
+                                <!-- Rewritten content goes here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                    <button type="button" onclick="closeModal()" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm">
+                        Close
+                    </button>
+                    <a id="modalOriginalLink" href="#" target="_blank" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                        View Original Source
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global State
+        let currentCategory = '';
+        let currentArticles = [];
+        let bookmarkedUrls = JSON.parse(localStorage.getItem('bookmarks')) || [];
+        let lastFetchTime = Date.now();
+
+        // Initialization
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const searchQuery = urlParams.get('search');
+            
+            if (searchQuery) {
+                searchNews(searchQuery);
+            } else {
+                loadHome();
+            }
+            
+            // Search setup
+            document.getElementById('searchInput').addEventListener('keypress', function (e) {
+                if (e.key === 'Enter') {
+                    searchNews(this.value);
+                }
+            });
+
+            // Set up auto-refresh polling (every 5 minutes)
+            setInterval(() => {
+                console.log("Auto-trigger: Checking for new articles...");
+                if (!currentCategory && !document.getElementById('searchInput').value) {
+                    loadHome(); 
+                }
+            }, 300000); // 5 minutes
+        });
+
+        // Toggle Loader
+        function toggleLoader(show) {
+            document.getElementById('loader').style.display = show ? 'flex' : 'none';
+        }
+
+        async function forceFetch() {
+            try {
+                toggleLoader(true);
+                const response = await fetch('/api/force-fetch/', { method: 'POST' });
+                if(response.ok) {
+                    alert("News background sync triggered successfully!");
+                    loadHome();
+                }
+            } catch (err) {
+                console.error(err);
+                alert("Error fetching news");
+            } finally {
+                toggleLoader(false);
+            }
+        }
+
+        async function loadHome() {
+            currentCategory = '';
+            document.getElementById('pageTitle').innerText = 'Top Headlines';
+            document.getElementById('trendingSection').style.display = 'block';
+            await loadTrending();
+            await fetchArticles('/api/articles/');
+        }
+
+        async function loadCategory(cat) {
+            currentCategory = cat;
+            document.getElementById('trendingSection').style.display = 'none';
+            document.getElementById('pageTitle').innerText = cat ? cat.charAt(0).toUpperCase() + cat.slice(1) + ' News' : 'Latest News';
+            await fetchArticles(`/api/articles/?category=${cat}`);
+        }
+
+        async function searchNews(query) {
+            document.getElementById('trendingSection').style.display = 'none';
+            document.getElementById('pageTitle').innerText = 'Search Results';
+            document.getElementById('pageSubTitle').innerText = `Showing results for "${query}"`;
+            await fetchArticles(`/api/articles/?search=${query}`);
+        }
+
+        function loadBookmarks() {
+            document.getElementById('trendingSection').style.display = 'none';
+            document.getElementById('pageTitle').innerText = 'Your Bookmarks';
+            document.getElementById('pageSubTitle').innerText = 'Saved articles for later reading';
+            
+            const bookmarkedArticles = currentArticles.filter(a => bookmarkedUrls.includes(a.original_url));
+            if(bookmarkedArticles.length > 0) {
+                renderArticles(bookmarkedArticles, 'newsContainer');
+            } else {
+                fetchArticles('/api/articles/').then(() => {
+                    const bArt = currentArticles.filter(a => bookmarkedUrls.includes(a.original_url));
+                    renderArticles(bArt, 'newsContainer');
+                });
+            }
+        }
+
+        async function fetchArticles(url) {
+            toggleLoader(true);
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                currentArticles = data.results || data; 
+                if(data.results===undefined) currentArticles = data; 
+                
+                renderArticles(currentArticles, 'newsContainer');
+                translatePage();
+            } catch (error) {
+                console.error('Error fetching articles:', error);
+                document.getElementById('newsContainer').innerHTML = '<p class="text-red-500 font-medium text-center">Failed to load news. Please try again later.</p>';
+            } finally {
+                toggleLoader(false);
+            }
+        }
+
+        async function loadTrending() {
+            try {
+                const response = await fetch('/api/trending/');
+                const data = await response.json();
+                renderArticles(data, 'trendingContainer', true);
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        function toggleBookmark(url) {
+            const idx = bookmarkedUrls.indexOf(url);
+            if (idx > -1) {
+                bookmarkedUrls.splice(idx, 1);
+            } else {
+                bookmarkedUrls.push(url);
+            }
+            localStorage.setItem('bookmarks', JSON.stringify(bookmarkedUrls));
+            renderArticles(currentArticles, 'newsContainer');
+        }
+
+        function openArticle(id) {
+            const article = currentArticles.find(a => a.id == id);
+            if (!article) return;
+
+            document.getElementById('modalTitle').innerText = article.title;
+            document.getElementById('modalImage').src = article.image_url || 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&q=80&w=800';
+            document.getElementById('modalSource').innerText = article.source || 'AI NEWS';
+            document.getElementById('modalCategory').innerText = article.category_name || 'GENERAL';
+            document.getElementById('modalDate').innerHTML = `<i class="far fa-calendar-alt mr-1"></i> ${new Date(article.published_date).toLocaleString()}`;
+            
+            // Format rewritten content into paragraphs
+            const content = article.content || article.description || "Content is being generated...";
+            const formattedContent = content.split('\n').filter(p => p.trim() !== '').map(p => `<p class="mb-4">${p}</p>`).join('');
+            document.getElementById('modalContent').innerHTML = formattedContent;
+            document.getElementById('modalOriginalLink').href = article.original_url;
+            
+            document.getElementById('articleModal').classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModal() {
+            document.getElementById('articleModal').classList.add('hidden');
+            document.body.style.overflow = 'auto';
+        }
+
+        function renderArticles(articles, targetId, isTrending = false) {
+            const container = document.getElementById(targetId);
+            container.innerHTML = '';
+
+            if(articles.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 text-center col-span-full">No articles found in this section.</p>';
+                return;
+            }
+
+            articles.forEach(article => {
+                const isBookmarked = bookmarkedUrls.includes(article.original_url);
+                const bookmarkIcon = isBookmarked ? 'fas fa-bookmark text-red-500' : 'far fa-bookmark text-gray-400';
+                
+                const category = (article.category_name || 'GENERAL').toUpperCase();
+                const fallbackImages = {
+                    'TECHNOLOGY': 'https://images.unsplash.com/photo-1485827404703-89b55fcc595e',
+                    'BUSINESS': 'https://images.unsplash.com/photo-1460925895917-afdab827c52f',
+                    'SPORTS': 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2',
+                    'HEALTH': 'https://images.unsplash.com/photo-1505751172876-fa1923c5c528',
+                    'ENTERTAINMENT': 'https://images.unsplash.com/photo-1514525253361-bee8718a7439',
+                    'WORLD': 'https://images.unsplash.com/photo-1521295121783-8a321d551ad2'
+                };
+                const defaultImage = fallbackImages[category] || 'https://images.unsplash.com/photo-1504711434969-e33886168f5c';
+                const imageUrl = article.image_url && article.image_url !== "" ? article.image_url : `${defaultImage}?auto=format&fit=crop&q=80&w=800&sig=${article.id}`;
+                
+                const pubDate = new Date(article.published_date);
+                const diffMs = new Date() - pubDate;
+                const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
+                const diffMins = Math.floor(diffMs / (1000 * 60));
+                
+                let timeStr = pubDate.toLocaleDateString();
+                if (diffHrs < 24 && diffHrs > 0) timeStr = `${diffHrs}h ago`;
+                else if (diffHrs === 0) timeStr = `${diffMins}m ago`;
+                
+                const cardClasses = isTrending ? 
+                    "news-card bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col h-full cursor-pointer hover:shadow-lg" : 
+                    "news-card bg-white rounded-xl shadow border border-gray-200 overflow-hidden flex flex-col h-full cursor-pointer hover:shadow-xl";
+                
+                const titleLength = isTrending ? 60 : 100;
+                let shortTitle = article.title.length > titleLength ? article.title.substring(0, titleLength) + '...' : article.title;
+
+                const cardHTML = `
+                    <div class="${cardClasses}" data-id="${article.id}" onclick="openArticle('${article.id}')">
+                        <div class="relative">
+                            <img src="${imageUrl}" alt="News Image" class="w-full ${isTrending?'h-32':'h-48'} object-cover" onerror="this.src='${defaultImage}'">
+                            <div class="absolute top-2 right-2 bg-white bg-opacity-90 rounded-full p-1.5 cursor-pointer shadow hover:bg-gray-100" onclick="event.stopPropagation(); toggleBookmark('${article.original_url}')">
+                                <i class="${bookmarkIcon} text-lg w-6 h-6 flex items-center justify-center"></i>
+                            </div>
+                        </div>
+                        <div class="p-4 flex-grow flex flex-col">
+                            <div class="flex items-center text-xs font-bold text-blue-600 mb-2 space-x-2">
+                                <span class="bg-blue-100 py-0.5 px-2 rounded-full uppercase truncate mb-1">${article.category_name || 'General'}</span>
+                                <span class="text-gray-400 font-normal"><i class="far fa-clock mr-1"></i>${timeStr}</span>
+                            </div>
+                            <h3 class="font-bold text-gray-900 mb-2 leading-tight ${isTrending?'text-sm':'text-lg'} article-title">${shortTitle}</h3>
+                            <p class="text-gray-600 text-sm mb-4 flex-grow line-clamp-3 article-summary">${isTrending ? '' : (article.summary || article.description || '')}</p>
+                            
+                            <div class="mt-auto flex justify-between items-center border-t border-gray-100 pt-3">
+                                <span class="text-xs font-bold text-gray-400 uppercase tracking-wider truncate w-24">${article.source || 'News'}</span>
+                                <span class="text-blue-600 hover:text-blue-800 text-sm font-bold flex items-center">
+                                    Read Rewritten <i class="fas fa-chevron-right ml-1 text-xs"></i>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.innerHTML += cardHTML;
+            });
+        }
+
+        async function translatePage() {
+            const lang = document.getElementById('langSelect').value;
+            if (lang === 'en') return;
+
+            const cards = document.querySelectorAll('.news-card');
+            for(let i=0; i<Math.min(cards.length, 6); i++) {
+                const card = cards[i];
+                const id = card.getAttribute('data-id');
+                const titleEl = card.querySelector('.article-title');
+                const summaryEl = card.querySelector('.article-summary');
+                
+                if (titleEl.classList.contains('translated-to-'+lang)) continue;
+                titleEl.style.opacity = '0.5';
+
+                try {
+                    const response = await fetch(`/api/translate/${id}/${lang}/`);
+                    if(response.ok) {
+                        const data = await response.json();
+                        titleEl.innerText = data.title;
+                        if(summaryEl) summaryEl.innerText = data.summary;
+                        titleEl.classList.add('translated-to-'+lang);
+                    }
+                } catch(e) {
+                    console.error("Translation fail", e);
+                } finally {
+                    titleEl.style.opacity = '1';
+                }
+            }
+        }
+    </script>
+</body>
+</html>
+</body>
+</html>
