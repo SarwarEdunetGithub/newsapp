@@ -22,6 +22,20 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        @media (max-width: 768px) {
+            main { padding-top: 4rem; }
+            #mobileSearchPanel.hidden ~ main,
+            #mobileCategoryMenu.hidden ~ main {
+                padding-top: 6rem;
+            }
+        }
+        .grid { gap: 1rem; }
+        @media (min-width: 641px) {
+            .grid { gap: 1.5rem; }
+        }
+        @media (min-width: 1024px) {
+            .grid { gap: 2rem; }
+        }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans">
@@ -58,8 +72,11 @@
                 </div>
 
                 <!-- Mobile menu button -->
-                <div class="flex items-center md:hidden">
-                    <button class="text-gray-600 hover:text-gray-900 focus:outline-none p-2">
+                <div class="flex items-center md:hidden gap-2">
+                    <button id="mobileSearchToggle" class="text-gray-600 hover:text-gray-900 focus:outline-none p-2">
+                        <i class="fas fa-search text-xl"></i>
+                    </button>
+                    <button id="mobileMenuBtn" class="text-gray-600 hover:text-gray-900 focus:outline-none p-2">
                         <i class="fas fa-bars text-xl"></i>
                     </button>
                 </div>
@@ -67,49 +84,110 @@
         </div>
     </nav>
 
+    <!-- Mobile Search Panel -->
+    <div id="mobileSearchPanel" class="md:hidden bg-white border-b border-gray-200 fixed w-full top-16 left-0 right-0 z-9 hidden p-4">
+        <div class="relative flex items-center">
+            <input type="text" id="mobileSearchInput" placeholder="Search news..." class="w-full bg-gray-100 rounded-full py-2 px-4 pl-10 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+            <i class="fas fa-search absolute left-3 top-2.5 text-gray-400 text-sm"></i>
+            <button onclick="startVoiceSearch()" type="button" class="absolute right-3 text-blue-600 hover:text-blue-800" title="Search by voice">
+                <i class="fas fa-microphone"></i>
+            </button>
+        </div>
+        <script>
+            document.getElementById('mobileSearchInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    searchNews(this.value);
+                    document.getElementById('mobileSearchPanel').classList.add('hidden');
+                }
+            });
+        </script>
+    </div>
+
+    <!-- Mobile Category Menu -->
+    <div id="mobileCategoryMenu" class="md:hidden bg-white border-b border-gray-200 fixed w-full top-16 left-0 right-0 z-9 hidden max-h-96 overflow-y-auto">
+        <button onclick="loadHome()" class="w-full text-left px-4 py-3 text-gray-700 hover:bg-blue-50 border-b border-gray-100">
+            <i class="fas fa-home mr-2"></i> Home
+        </button>
+        <button onclick="loadCategory('technology')" class="w-full text-left px-4 py-3 text-gray-700 hover:bg-blue-50 border-b border-gray-100">
+            <i class="fas fa-laptop mr-2"></i> Technology
+        </button>
+        <button onclick="loadCategory('business')" class="w-full text-left px-4 py-3 text-gray-700 hover:bg-blue-50 border-b border-gray-100">
+            <i class="fas fa-briefcase mr-2"></i> Business
+        </button>
+        <button onclick="loadCategory('sports')" class="w-full text-left px-4 py-3 text-gray-700 hover:bg-blue-50 border-b border-gray-100">
+            <i class="fas fa-football-ball mr-2"></i> Sports
+        </button>
+        <button onclick="loadCategory('health')" class="w-full text-left px-4 py-3 text-gray-700 hover:bg-blue-50 border-b border-gray-100">
+            <i class="fas fa-heartbeat mr-2"></i> Health
+        </button>
+        <button onclick="loadBookmarks()" class="w-full text-left px-4 py-3 text-red-500 hover:bg-red-50">
+            <i class="fas fa-bookmark mr-2"></i> Bookmarks
+        </button>
+    </div>
+
+        </nav>
     <!-- Main Content -->
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-12">
+    <main class="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 pt-24 sm:pt-28 pb-12">
         
         <!-- Flash Message / Initial Loader Trigger -->
-        <div class="flex justify-between items-end mb-6">
+        <div class="flex flex-col md:flex-row md:justify-between md:items-end gap-4 mb-6">
             <div>
                 <h1 id="pageTitle" class="text-3xl font-bold text-gray-900">Top Headlines</h1>
-                <p id="pageSubTitle" class="text-gray-500 mt-1">Your daily intelligent news digest displaying the top 10 trending headlines</p>
+                <p id="pageSubTitle" class="text-gray-500 mt-1 text-sm md:text-base">Your daily intelligent news digest displaying the top 10 trending headlines</p>
             </div>
             
-            <!-- Controls -->
-            <div class="flex items-center space-x-2">
-                <select id="langSelect" onchange="translatePage()" class="bg-white border border-gray-300 text-gray-700 py-1 px-3 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm">
-                    <option value="en">English</option>
-                    <option value="hi">Hindi</option>
-                    <option value="te">Telugu</option>
+            <!-- Controls - Desktop -->
+            <div class="hidden sm:flex flex-wrap items-center justify-end gap-2">
+                <select id="langSelect" onchange="translatePage()" class="bg-white border border-gray-300 text-gray-700 py-1 px-3 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-xs md:text-sm">
+                    <option value="en">🌐 English</option>
+                    <option value="hi">🇮🇳 Hindi</option>
+                    <option value="te">🇮🇳 Telugu</option>
                 </select>
 
-                <select id="voiceLangSelect" class="bg-white border border-gray-300 text-gray-700 py-1 px-3 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm" title="Speech recognition language">
-                    <option value="en-US">Voice: English (US)</option>
-                    <option value="hi-IN">Voice: Hindi (India)</option>
-                    <option value="te-IN">Voice: Telugu (India)</option>
+                <select id="voiceLangSelect" class="bg-white border border-gray-300 text-gray-700 py-1 px-3 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-xs md:text-sm" title="Speech recognition language">
+                    <option value="en-US">🎤 EN (US)</option>
+                    <option value="hi-IN">🎤 HI (IN)</option>
+                    <option value="te-IN">🎤 TE (IN)</option>
                 </select>
 
-                <button id="ttsBtn" onclick="speakHeadlines()" class="bg-green-600 hover:bg-green-700 text-white py-1 px-3 rounded-md shadow-sm text-sm font-medium transition duration-150" title="Read headlines aloud">
-                    <i class="fas fa-volume-up mr-1"></i> Read
+                <button id="ttsBtn" onclick="speakHeadlines()" class="bg-green-600 hover:bg-green-700 text-white py-1 px-2 md:px-3 rounded-md shadow-sm text-xs md:text-sm font-medium transition duration-150" title="Read headlines aloud">
+                    <i class="fas fa-volume-up"></i>
                 </button>
 
-                <input id="dateSelect" type="date" class="bg-white border border-gray-300 text-gray-700 py-1 px-3 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm" onchange="loadDailyNews()" />
-                <button id="clearDateBtn" onclick="clearDateFilter()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 py-1 px-3 rounded-md shadow-sm text-sm transition duration-150">
-                    Clear Date
+                <input id="dateSelect" type="date" class="bg-white border border-gray-300 text-gray-700 py-1 px-2 md:px-3 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-xs md:text-sm" onchange="loadDailyNews()" />
+                <button id="clearDateBtn" onclick="clearDateFilter()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 py-1 px-2 rounded-md shadow-sm text-xs md:text-sm transition duration-150">
+                    ✕
                 </button>
 
-                <button onclick="forceFetch()" class="bg-blue-600 hover:bg-blue-700 text-white py-1.5 px-4 rounded-md shadow-sm text-sm font-medium transition duration-150">
-                    <i class="fas fa-sync-alt mr-1"></i> Refresh News
+                <button onclick="forceFetch()" class="bg-blue-600 hover:bg-blue-700 text-white py-1 px-2 md:px-3 rounded-md shadow-sm text-xs md:text-sm font-medium transition duration-150" title="Refresh news">
+                    <i class="fas fa-sync-alt"></i>
                 </button>
+            </div>
+
+            <!-- Controls - Mobile -->
+            <div class="sm:hidden flex flex-wrap gap-2 w-full">
+                <button id="ttsBtn" onclick="speakHeadlines()" class="flex-1 bg-green-600 hover:bg-green-700 text-white py-1.5 px-2 rounded-md shadow-sm text-xs font-medium transition duration-150" title="Read headlines">
+                    <i class="fas fa-volume-up"></i>
+                </button>
+                
+                <select id="langSelectMobile" onchange="translatePage()" class="flex-1 bg-white border border-gray-300 text-gray-700 py-1.5 px-2 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-xs">
+                    <option value="en">🌐 EN</option>
+                    <option value="hi">🇮🇳 HI</option>
+                    <option value="te">🇮🇳 TE</option>
+                </select>
+
+                <button onclick="forceFetch()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-1.5 px-2 rounded-md shadow-sm text-xs font-medium transition duration-150" title="Refresh">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+
+                <input id="dateSelectMobile" type="date" class="flex-1 bg-white border border-gray-300 text-gray-700 py-1.5 px-2 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-xs" onchange="loadDailyNews()" />
             </div>
         </div>
 
         <!-- Trending Section (Only on Home) -->
         <div id="trendingSection" class="mb-12">
             <h2 class="text-2xl font-bold text-gray-900 mb-4 border-l-4 border-blue-500 pl-3">Trending Now</h2>
-            <div id="trendingContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div id="trendingContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
                 <!-- Trending cards will be injected here -->
             </div>
         </div>
@@ -123,7 +201,7 @@
             <div class="loader"></div>
         </div>
 
-        <div id="newsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div id="newsContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-8">
             <!-- News cards will be injected here -->
         </div>
         
@@ -134,34 +212,34 @@
         <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
             <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" onclick="closeModal()"></div>
             <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-            <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
+            <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all w-full sm:my-8 sm:align-middle sm:max-w-4xl">
                 <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                    <div class="sm:flex sm:items-start">
+                    <div class="sm:flex sm:items-start flex-col sm:flex-row">
                         <div class="mt-3 text-left sm:mt-0 sm:ml-4 w-full">
-                            <div class="flex justify-between items-start mb-4">
-                                <div class="flex items-center space-x-3">
-                                    <h3 class="text-3xl leading-tight font-bold text-gray-900" id="modalTitle">Article Title</h3>
-                                    <button id="modalTtsBtn" onclick="speakModalArticle()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-md text-sm font-medium focus:outline-none" title="Read article aloud">
-                                        <i class="fas fa-volume-up"></i> Read
+                            <div class="flex justify-between items-start mb-4 flex-wrap gap-2">
+                                <div class="flex items-center space-x-2 flex-wrap">
+                                    <h3 class="text-xl sm:text-3xl leading-tight font-bold text-gray-900" id="modalTitle">Article Title</h3>
+                                    <button id="modalTtsBtn" onclick="speakModalArticle()" class="bg-blue-600 hover:bg-blue-700 text-white px-2 sm:px-3 py-1 rounded-md text-xs sm:text-sm font-medium focus:outline-none whitespace-nowrap" title="Read article aloud">
+                                        <i class="fas fa-volume-up"></i>
                                     </button>
                                 </div>
-                                <button onclick="closeModal()" class="text-gray-400 hover:text-gray-500 focus:outline-none">
+                                <button onclick="closeModal()" class="text-gray-400 hover:text-gray-500 focus:outline-none flex-shrink-0">
                                     <i class="fas fa-times text-2xl"></i>
                                 </button>
                             </div>
-                            <img id="modalImage" src="" alt="" class="w-full h-80 object-cover rounded-xl mb-6 shadow-md">
-                            <div class="flex items-center space-x-4 mb-6 text-sm text-gray-500">
+                            <img id="modalImage" src="" alt="" class="w-full h-40 sm:h-80 object-cover rounded-xl mb-6 shadow-md">
+                            <div class="flex items-center space-x-2 sm:space-x-4 mb-6 text-xs sm:text-sm text-gray-500 flex-wrap">
                                 <span id="modalSource" class="font-bold text-blue-600 uppercase tracking-widest">SOURCE</span>
                                 <span id="modalDate"><i class="far fa-calendar-alt mr-1"></i> DATE</span>
                                 <span id="modalCategory" class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full text-xs font-bold">CATEGORY</span>
                             </div>
-                            <div id="modalContent" class="text-gray-700 text-lg leading-relaxed space-y-4 prose max-w-none">
+                            <div id="modalContent" class="text-gray-700 text-base sm:text-lg leading-relaxed space-y-4 prose max-w-none">
                                 <!-- Rewritten content goes here -->
                             </div>
                         </div>
                     </div>
                 </div>
-                <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse flex-col-reverse">
                     <button type="button" onclick="closeModal()" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm">
                         Close
                     </button>
@@ -195,11 +273,49 @@
                 loadHome();
             }
             
-            // Search setup
+            // Search setup - Desktop
             document.getElementById('searchInput').addEventListener('keypress', function (e) {
                 if (e.key === 'Enter') {
                     searchNews(this.value);
                 }
+            });
+
+            // Mobile menu toggle
+            document.getElementById('mobileMenuBtn').addEventListener('click', () => {
+                const menu = document.getElementById('mobileCategoryMenu');
+                const searchPanel = document.getElementById('mobileSearchPanel');
+                menu.classList.toggle('hidden');
+                searchPanel.classList.add('hidden');
+            });
+
+            // Mobile search toggle
+            document.getElementById('mobileSearchToggle').addEventListener('click', () => {
+                const searchPanel = document.getElementById('mobileSearchPanel');
+                const menu = document.getElementById('mobileCategoryMenu');
+                searchPanel.classList.toggle('hidden');
+                menu.classList.add('hidden');
+            });
+
+            // Sync mobile language select with desktop
+            document.getElementById('langSelectMobile').addEventListener('change', function() {
+                document.getElementById('langSelect').value = this.value;
+                translatePage();
+            });
+
+            // Sync desktop language select with mobile
+            document.getElementById('langSelect').addEventListener('change', function() {
+                document.getElementById('langSelectMobile').value = this.value;
+            });
+
+            // Sync mobile date select with desktop
+            document.getElementById('dateSelectMobile').addEventListener('change', function() {
+                document.getElementById('dateSelect').value = this.value;
+                loadDailyNews();
+            });
+
+            // Sync desktop date select with mobile
+            document.getElementById('dateSelect').addEventListener('change', function() {
+                document.getElementById('dateSelectMobile').value = this.value;
             });
 
             // Set up auto-refresh polling (every 5 minutes)
@@ -209,6 +325,12 @@
                     loadHome(); 
                 }
             }, 300000); // 5 minutes
+
+            // Close mobile menus when clicking on main content
+            document.getElementById('newsContainer').addEventListener('click', () => {
+                document.getElementById('mobileSearchPanel').classList.add('hidden');
+                document.getElementById('mobileCategoryMenu').classList.add('hidden');
+            });
         });
 
         // Toggle Loader
@@ -273,6 +395,7 @@
         function clearDateFilter() {
             currentDateFilter = '';
             document.getElementById('dateSelect').value = '';
+            document.getElementById('dateSelectMobile').value = '';
             loadHome();
         }
 
