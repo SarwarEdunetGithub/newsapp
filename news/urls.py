@@ -14,5 +14,6 @@ urlpatterns = [
     path('api/', include(router.urls)),
     path('api/trending/', views.TrendingNewsView.as_view(), name='trending_news'),
     path('api/translate/<int:pk>/<str:lang>/', views.TranslateArticleView.as_view(), name='translate_article'),
+    path('api/translate-batch/<str:lang>/', views.BatchTranslateView.as_view(), name='translate_batch'),
     path('api/force-fetch/', views.ForceFetchView.as_view(), name='force_fetch'),
 ]

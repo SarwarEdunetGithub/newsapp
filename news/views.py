@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from django.shortcuts import render
 from .models import Article, Category
 from .serializers import ArticleSerializer, CategorySerializer
-from .utils import translate_text, fetch_and_save_news
+from .utils import translate_text, fetch_and_save_news, translate_batch
 import threading
 
 class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
@@ -40,6 +40,31 @@ class TrendingNewsView(generics.ListAPIView):
         if not trending:
             return Article.objects.all().order_by('-published_date')[:10]
         return trending
+
+class BatchTranslateView(APIView):
+    def post(self, request, lang):
+        article_ids = request.data.get('ids', [])
+        if not article_ids:
+            return Response({"error": "No IDs provided"}, status=400)
+            
+        articles = Article.objects.filter(id__in=article_ids)
+        
+        # Prepare batch for titles and summaries
+        batch = {}
+        for a in articles:
+            batch[f"{a.id}_title"] = a.title
+            batch[f"{a.id}_summary"] = a.summary or a.description
+            
+        translated_batch = translate_batch(batch, lang)
+        
+        results = {}
+        for a in articles:
+            results[str(a.id)] = {
+                "title": translated_batch.get(f"{a.id}_title", a.title),
+                "summary": translated_batch.get(f"{a.id}_summary", a.summary or a.description)
+            }
+            
+        return Response(results)
 
 class TranslateArticleView(APIView):
     def get(self, request, pk, lang):
