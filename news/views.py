@@ -19,12 +19,16 @@ class ArticleViewSet(viewsets.ReadOnlyModelViewSet):
         queryset = super().get_queryset()
         category = self.request.query_params.get('category')
         search = self.request.query_params.get('search')
+        date = self.request.query_params.get('date')
         
         if category:
             queryset = queryset.filter(category__slug=category)
         if search:
             queryset = queryset.filter(title__icontains=search) | queryset.filter(description__icontains=search)
-            
+        if date:
+            # expected format YYYY-MM-DD
+            queryset = queryset.filter(published_date__date=date)
+        
         return queryset
 
 class TrendingNewsView(generics.ListAPIView):

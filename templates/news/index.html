@@ -48,9 +48,12 @@
 
                 <!-- Search and Tools -->
                 <div class="flex items-center space-x-3">
-                    <div class="relative hidden sm:block">
+                    <div class="relative hidden sm:flex items-center">
                         <input type="text" id="searchInput" placeholder="Search news..." class="w-full bg-gray-100 rounded-full py-1.5 px-4 pl-10 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
                         <i class="fas fa-search absolute left-3 top-2.5 text-gray-400 text-sm"></i>
+                        <button id="voiceBtn" onclick="startVoiceSearch()" type="button" class="absolute right-3 top-2.5 text-blue-600 hover:text-blue-800 text-sm" title="Search by voice">
+                            <i class="fas fa-microphone"></i>
+                        </button>
                     </div>
                 </div>
 
@@ -75,12 +78,28 @@
             </div>
             
             <!-- Controls -->
-            <div class="flex items-center space-x-4">
+            <div class="flex items-center space-x-2">
                 <select id="langSelect" onchange="translatePage()" class="bg-white border border-gray-300 text-gray-700 py-1 px-3 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm">
                     <option value="en">English</option>
                     <option value="hi">Hindi</option>
                     <option value="te">Telugu</option>
                 </select>
+
+                <select id="voiceLangSelect" class="bg-white border border-gray-300 text-gray-700 py-1 px-3 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm" title="Speech recognition language">
+                    <option value="en-US">Voice: English (US)</option>
+                    <option value="hi-IN">Voice: Hindi (India)</option>
+                    <option value="te-IN">Voice: Telugu (India)</option>
+                </select>
+
+                <button id="ttsBtn" onclick="speakHeadlines()" class="bg-green-600 hover:bg-green-700 text-white py-1 px-3 rounded-md shadow-sm text-sm font-medium transition duration-150" title="Read headlines aloud">
+                    <i class="fas fa-volume-up mr-1"></i> Read
+                </button>
+
+                <input id="dateSelect" type="date" class="bg-white border border-gray-300 text-gray-700 py-1 px-3 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm" onchange="loadDailyNews()" />
+                <button id="clearDateBtn" onclick="clearDateFilter()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 py-1 px-3 rounded-md shadow-sm text-sm transition duration-150">
+                    Clear Date
+                </button>
+
                 <button onclick="forceFetch()" class="bg-blue-600 hover:bg-blue-700 text-white py-1.5 px-4 rounded-md shadow-sm text-sm font-medium transition duration-150">
                     <i class="fas fa-sync-alt mr-1"></i> Refresh News
                 </button>
@@ -120,7 +139,12 @@
                     <div class="sm:flex sm:items-start">
                         <div class="mt-3 text-left sm:mt-0 sm:ml-4 w-full">
                             <div class="flex justify-between items-start mb-4">
-                                <h3 class="text-3xl leading-tight font-bold text-gray-900" id="modalTitle">Article Title</h3>
+                                <div class="flex items-center space-x-3">
+                                    <h3 class="text-3xl leading-tight font-bold text-gray-900" id="modalTitle">Article Title</h3>
+                                    <button id="modalTtsBtn" onclick="speakModalArticle()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-md text-sm font-medium focus:outline-none" title="Read article aloud">
+                                        <i class="fas fa-volume-up"></i> Read
+                                    </button>
+                                </div>
                                 <button onclick="closeModal()" class="text-gray-400 hover:text-gray-500 focus:outline-none">
                                     <i class="fas fa-times text-2xl"></i>
                                 </button>
@@ -152,9 +176,13 @@
     <script>
         // Global State
         let currentCategory = '';
+        let currentDateFilter = '';
+        let currentLanguage = 'en';
         let currentArticles = [];
         let bookmarkedUrls = JSON.parse(localStorage.getItem('bookmarks')) || [];
         let lastFetchTime = Date.now();
+        const translationCache = {}; // {"<id>_<lang>": {title, summary}}
+
 
         // Initialization
         document.addEventListener('DOMContentLoaded', () => {
@@ -206,7 +234,10 @@
 
         async function loadHome() {
             currentCategory = '';
+            currentDateFilter = '';
+            document.getElementById('dateSelect').value = '';
             document.getElementById('pageTitle').innerText = 'Top Headlines';
+            document.getElementById('pageSubTitle').innerText = 'Your daily intelligent news digest displaying the top 10 trending headlines';
             document.getElementById('trendingSection').style.display = 'block';
             await loadTrending();
             await fetchArticles('/api/articles/');
@@ -214,12 +245,40 @@
 
         async function loadCategory(cat) {
             currentCategory = cat;
+            currentDateFilter = '';
+            document.getElementById('dateSelect').value = '';
             document.getElementById('trendingSection').style.display = 'none';
             document.getElementById('pageTitle').innerText = cat ? cat.charAt(0).toUpperCase() + cat.slice(1) + ' News' : 'Latest News';
-            await fetchArticles(`/api/articles/?category=${cat}`);
+            const url = cat ? `/api/articles/?category=${cat}` : '/api/articles/';
+            await fetchArticles(url);
+        }
+
+        async function loadDailyNews() {
+            const selectedDate = document.getElementById('dateSelect').value;
+            currentDateFilter = selectedDate;
+            if (!selectedDate) {
+                loadHome();
+                return;
+            }
+
+            document.getElementById('trendingSection').style.display = 'none';
+            document.getElementById('pageTitle').innerText = `News for ${selectedDate}`;
+            document.getElementById('pageSubTitle').innerText = `Showing articles published on ${selectedDate}`;
+
+            const dateQuery = `date=${selectedDate}`;
+            const catQuery = currentCategory ? `&category=${currentCategory}` : '';
+            await fetchArticles(`/api/articles/?${dateQuery}${catQuery}`);
+        }
+
+        function clearDateFilter() {
+            currentDateFilter = '';
+            document.getElementById('dateSelect').value = '';
+            loadHome();
         }
 
         async function searchNews(query) {
+            currentDateFilter = '';
+            document.getElementById('dateSelect').value = '';
             document.getElementById('trendingSection').style.display = 'none';
             document.getElementById('pageTitle').innerText = 'Search Results';
             document.getElementById('pageSubTitle').innerText = `Showing results for "${query}"`;
@@ -247,11 +306,15 @@
             try {
                 const response = await fetch(url);
                 const data = await response.json();
-                currentArticles = data.results || data; 
-                if(data.results===undefined) currentArticles = data; 
-                
-                renderArticles(currentArticles, 'newsContainer');
-                translatePage();
+                const articles = Array.isArray(data) ? data : (data.results || []);
+                currentArticles = articles;
+
+                if (articles.length === 0) {
+                    document.getElementById('newsContainer').innerHTML = '<p class="text-gray-500 font-medium text-center col-span-full">No news available right now. Please refresh or come back later.</p>';
+                } else {
+                    renderArticles(currentArticles, 'newsContainer');
+                    translatePage();
+                }
             } catch (error) {
                 console.error('Error fetching articles:', error);
                 document.getElementById('newsContainer').innerHTML = '<p class="text-red-500 font-medium text-center">Failed to load news. Please try again later.</p>';
@@ -264,9 +327,17 @@
             try {
                 const response = await fetch('/api/trending/');
                 const data = await response.json();
-                renderArticles(data, 'trendingContainer', true);
+                const articles = Array.isArray(data) ? data : (data.results || []);
+
+                if (articles.length === 0) {
+                    document.getElementById('trendingContainer').innerHTML = '<p class="text-gray-500 text-center col-span-full">No trending articles available right now.</p>';
+                    return;
+                }
+
+                renderArticles(articles, 'trendingContainer', true);
             } catch (err) {
-                console.error(err);
+                console.error('Error loading trending news:', err);
+                document.getElementById('trendingContainer').innerHTML = '<p class="text-red-500 text-center col-span-full">Could not load trending headlines.</p>';
             }
         }
 
@@ -378,32 +449,151 @@
 
         async function translatePage() {
             const lang = document.getElementById('langSelect').value;
-            if (lang === 'en') return;
+            currentLanguage = lang;
 
             const cards = document.querySelectorAll('.news-card');
-            for(let i=0; i<Math.min(cards.length, 6); i++) {
+            if (lang === 'en') {
+                cards.forEach(card => {
+                    const id = card.getAttribute('data-id');
+                    const article = currentArticles.find(a => a.id == id);
+                    const titleEl = card.querySelector('.article-title');
+                    const summaryEl = card.querySelector('.article-summary');
+                    if (!article || !titleEl) return;
+
+                    titleEl.innerText = article.title || '';
+                    if (summaryEl) summaryEl.innerText = article.summary || article.description || '';
+                    titleEl.classList.remove('translated-to-hi', 'translated-to-te');
+                });
+                return;
+            }
+
+            for (let i = 0; i < cards.length; i++) {
                 const card = cards[i];
                 const id = card.getAttribute('data-id');
                 const titleEl = card.querySelector('.article-title');
                 const summaryEl = card.querySelector('.article-summary');
-                
-                if (titleEl.classList.contains('translated-to-'+lang)) continue;
-                titleEl.style.opacity = '0.5';
+                if (!titleEl) continue;
 
+                const cacheKey = `${id}_${lang}`;
+                const cached = translationCache[cacheKey];
+                if (cached) {
+                    titleEl.innerText = cached.title;
+                    if (summaryEl && cached.summary) summaryEl.innerText = cached.summary;
+                    titleEl.classList.add('translated-to-'+lang);
+                    continue;
+                }
+
+                titleEl.style.opacity = '0.5';
                 try {
                     const response = await fetch(`/api/translate/${id}/${lang}/`);
-                    if(response.ok) {
+                    if (response.ok) {
                         const data = await response.json();
-                        titleEl.innerText = data.title;
-                        if(summaryEl) summaryEl.innerText = data.summary;
+                        const translatedTitle = data.title || titleEl.innerText;
+                        const translatedSummary = data.summary || (summaryEl ? summaryEl.innerText : '');
+
+                        translationCache[cacheKey] = {
+                            title: translatedTitle,
+                            summary: translatedSummary
+                        };
+
+                        titleEl.innerText = translatedTitle;
+                        if (summaryEl) summaryEl.innerText = translatedSummary;
                         titleEl.classList.add('translated-to-'+lang);
                     }
-                } catch(e) {
-                    console.error("Translation fail", e);
+                } catch (e) {
+                    console.error('Translation fail', e);
                 } finally {
                     titleEl.style.opacity = '1';
                 }
             }
+        }
+
+        function startVoiceSearch() {
+            const recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!recognition) {
+                alert('Voice search is not supported in this browser. Please use a Chromium-based browser.');
+                return;
+            }
+
+            const voiceLang = document.getElementById('voiceLangSelect').value || 'en-US';
+            const speech = new recognition();
+            speech.lang = voiceLang;
+            speech.interimResults = false;
+            speech.maxAlternatives = 1;
+
+            const voiceBtn = document.getElementById('voiceBtn');
+            voiceBtn.disabled = true;
+            voiceBtn.classList.add('text-gray-400');
+
+            speech.onresult = (event) => {
+                const speechText = event.results[0][0].transcript;
+                document.getElementById('searchInput').value = speechText;
+                searchNews(speechText);
+            };
+
+            speech.onerror = (event) => {
+                console.error('Speech recognition error', event.error);
+                alert('Voice input failed: ' + event.error);
+            };
+
+            speech.onend = () => {
+                voiceBtn.disabled = false;
+                voiceBtn.classList.remove('text-gray-400');
+            };
+
+            speech.start();
+        }
+
+        function speakHeadlines() {
+            if (!('speechSynthesis' in window)) {
+                alert('Text-to-speech is not supported in this browser.');
+                return;
+            }
+
+            if (!currentArticles || currentArticles.length === 0) {
+                alert('No headlines available to read.');
+                return;
+            }
+
+            const lecture = currentArticles.map((article, index) => `Headline ${index + 1}: ${article.title}`).join('. ');
+            if (!lecture) {
+                alert('No headlines available to read.');
+                return;
+            }
+
+            window.speechSynthesis.cancel();
+
+            const utterance = new SpeechSynthesisUtterance(lecture);
+            utterance.lang = currentLanguage === 'en' ? 'en-US' : (currentLanguage === 'hi' ? 'hi-IN' : (currentLanguage === 'te' ? 'te-IN' : 'en-US'));
+            utterance.rate = 1.0;
+            utterance.pitch = 1.0;
+
+            window.speechSynthesis.speak(utterance);
+        }
+
+        function speakModalArticle() {
+            if (!('speechSynthesis' in window)) {
+                alert('Text-to-speech is not supported in this browser.');
+                return;
+            }
+
+            const title = document.getElementById('modalTitle').innerText;
+            const content = document.getElementById('modalContent').innerText;
+
+            if (!title && !content) {
+                alert('No article is loaded in the modal.');
+                return;
+            }
+
+            const speechText = `Article: ${title}. ${content}`;
+            window.speechSynthesis.cancel();
+
+            const utterance = new SpeechSynthesisUtterance(speechText);
+            utterance.lang = currentLanguage === 'en' ? 'en-US' : (currentLanguage === 'hi' ? 'hi-IN' : (currentLanguage === 'te' ? 'te-IN' : 'en-US'));
+            utterance.rate = 1.0;
+            utterance.pitch = 1.0;
+
+            window.speechSynthesis.speak(utterance);
         }
     </script>
 </body>
